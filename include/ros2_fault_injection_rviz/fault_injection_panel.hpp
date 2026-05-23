@@ -1,0 +1,51 @@
+#ifndef ROS2_FAULT_INJECTION_RVIZ__FAULT_INJECTION_PANEL_HPP_
+#define ROS2_FAULT_INJECTION_RVIZ__FAULT_INJECTION_PANEL_HPP_
+
+#include <memory>
+
+#include <QPushButton>
+#include <QTableWidget>
+
+#include <rclcpp/client.hpp>
+#include <rclcpp/node.hpp>
+#include <rviz_common/panel.hpp>
+#include <rclcpp/executors/single_threaded_executor.hpp>
+#include <QTimer>
+
+#include "ros2_fault_injection/srv/get_fault_status.hpp"
+
+namespace ros2_fault_injection_rviz
+{
+
+  class FaultInjectionPanel : public rviz_common::Panel
+  {
+    Q_OBJECT
+
+  public:
+    explicit FaultInjectionPanel(QWidget *parent = nullptr);
+
+    void onInitialize() override;
+
+  private Q_SLOTS:
+    void refresh();
+
+  private:
+    void setup_ui();
+    void setup_ros();
+    void handle_status_response(
+        rclcpp::Client<ros2_fault_injection::srv::GetFaultStatus>::SharedFuture future);
+    void set_status_message(const QString &message);
+    void populate_table(const ros2_fault_injection::srv::GetFaultStatus::Response &response);
+
+    QPushButton *refresh_button_{nullptr};
+    QTableWidget *table_{nullptr};
+
+    rclcpp::Node::SharedPtr node_;
+    rclcpp::Client<ros2_fault_injection::srv::GetFaultStatus>::SharedPtr status_client_;
+    QTimer *spin_timer_{nullptr};
+    rclcpp::executors::SingleThreadedExecutor executor_;
+  };
+
+} // namespace ros2_fault_injection_rviz
+
+#endif // ROS2_FAULT_INJECTION_RVIZ__FAULT_INJECTION_PANEL_HPP_

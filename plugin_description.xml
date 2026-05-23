@@ -1,0 +1,10 @@
+<library path="ros2_fault_injection_rviz">
+  <class
+    name="ros2_fault_injection_rviz/FaultInjectionPanel"
+    type="ros2_fault_injection_rviz::FaultInjectionPanel"
+    base_class_type="rviz_common::Panel">
+    <description>
+      RViz panel for viewing and controlling ros2_fault_injection faults.
+    </description>
+  </class>
+</library>

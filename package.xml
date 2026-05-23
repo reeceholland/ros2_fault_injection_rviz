@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>ros2_fault_injection_rviz</name>
+  <version>0.1.0</version>
+  <description>RViz panel for controlling and observing ros2_fault_injection faults.</description>
+
+  <maintainer email="reece.j.holland@gmail.com">Reece Holland</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>ros2_fault_injection</depend>
+  <depend>rviz_common</depend>
+
+  <build_depend>qtbase5-dev</build_depend>
+  <exec_depend>qtbase5-dev</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <rviz plugin="${prefix}/plugin_description.xml"/>
+  </export>
+</package>
