@@ -29,8 +29,8 @@ namespace ros2_fault_injection_rviz
     layout->addWidget(refresh_button_);
 
     table_ = new QTableWidget(this);
-    table_->setColumnCount(4);
-    table_->setHorizontalHeaderLabels(QStringList{"Fault ID", "Injector", "State", "Details"});
+    table_->setColumnCount(5);
+    table_->setHorizontalHeaderLabels(QStringList{"Action", "Fault ID", "Injector", "State", "Details"});
     table_->horizontalHeader()->setStretchLastSection(true);
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -49,6 +49,9 @@ namespace ros2_fault_injection_rviz
     status_client_ =
         node_->create_client<ros2_fault_injection::srv::GetFaultStatus>(
             "/fault_injection/get_fault_status");
+    set_state_client_ =
+        node_->create_client<ros2_fault_injection::srv::SetFaultState>(
+            "/fault_injection/set_fault_state");
 
     spin_timer_ = new QTimer(this);
     connect(spin_timer_, &QTimer::timeout, this, [this]()
@@ -96,14 +99,52 @@ namespace ros2_fault_injection_rviz
     {
       const auto &fault = response.faults[row];
 
-      table_->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(fault.fault_id)));
-      table_->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(fault.injector_id)));
-      table_->setItem(row, 2, new QTableWidgetItem(QString::fromStdString(fault.state)));
-      table_->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(fault.details)));
+      const bool is_active = (fault.state == "active");
+      auto *action_button = new QPushButton(is_active ? "Deactivate" : "Activate", table_);
+
+      const std::string fault_id = fault.fault_id;
+      connect(action_button, &QPushButton::clicked, this, [this, fault_id, is_active]()
+              { set_fault_state(fault_id, !is_active); });
+
+      table_->setCellWidget(row, 0, action_button);
+      table_->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(fault.fault_id)));
+      table_->setItem(row, 2, new QTableWidgetItem(QString::fromStdString(fault.injector_id)));
+      table_->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(fault.state)));
+      table_->setItem(row, 4, new QTableWidgetItem(QString::fromStdString(fault.details)));
     }
 
     table_->resizeColumnsToContents();
     table_->horizontalHeader()->setStretchLastSection(true);
+  }
+
+  void FaultInjectionPanel::set_fault_state(const std::string &fault_id, bool active)
+  {
+    if (!set_state_client_ || !set_state_client_->service_is_ready())
+    {
+      return;
+    }
+
+    auto request = std::make_shared<ros2_fault_injection::srv::SetFaultState::Request>();
+    request->fault_id = fault_id;
+    request->active = active;
+
+    set_state_client_->async_send_request(
+        request,
+        [this](rclcpp::Client<ros2_fault_injection::srv::SetFaultState>::SharedFuture future)
+        {
+          handle_set_state_response(future);
+        });
+  }
+
+  void FaultInjectionPanel::handle_set_state_response(
+      rclcpp::Client<ros2_fault_injection::srv::SetFaultState>::SharedFuture future)
+  {
+    const auto response = future.get();
+
+    if (response->success)
+    {
+      refresh();
+    }
   }
 
 } // namespace ros2_fault_injection_rviz
