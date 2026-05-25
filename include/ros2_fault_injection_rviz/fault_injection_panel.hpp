@@ -18,6 +18,7 @@
 #include "ros2_fault_injection/srv/get_fault_status.hpp"
 #include "ros2_fault_injection/srv/reload_scenario.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
+#include "ros2_fault_injection/srv/set_fault_config.hpp"
 
 namespace ros2_fault_injection_rviz
 {
@@ -49,6 +50,10 @@ namespace ros2_fault_injection_rviz
     void populate_table(const ros2_fault_injection::srv::GetFaultStatus::Response &response);
     void handle_fault_event(const ros2_fault_injection::msg::FaultEvent &event);
     void add_event_row(const ros2_fault_injection::msg::FaultEvent &event);
+    void on_fault_selection_changed();
+    void on_set_config_clicked();
+    void set_config_response_callback(
+        rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedFuture future);
 
     QPushButton *reload_button_{nullptr};
     QLabel *status_label_{nullptr};
@@ -64,6 +69,13 @@ namespace ros2_fault_injection_rviz
     QTimer *status_timer_{nullptr};
     bool status_request_in_flight_{false};
     rclcpp::executors::SingleThreadedExecutor executor_;
+    std::string selected_fault_id_;
+    std::string selected_injector_id_;
+
+    QLineEdit *config_key_edit_{nullptr};
+    QLineEdit *config_value_edit_{nullptr};
+    QPushButton *set_config_button_{nullptr};
+    rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedPtr set_config_client_;
   };
 
 } // namespace ros2_fault_injection_rviz
