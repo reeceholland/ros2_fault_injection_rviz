@@ -1,6 +1,7 @@
 #include "ros2_fault_injection_rviz/fault_injection_panel.hpp"
 
 #include <QStringList>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QTableWidgetItem>
@@ -24,9 +25,18 @@ namespace ros2_fault_injection_rviz
   void FaultInjectionPanel::setup_ui()
   {
     auto *layout = new QVBoxLayout(this);
+    auto *button_layout = new QHBoxLayout();
 
     refresh_button_ = new QPushButton("Refresh", this);
-    layout->addWidget(refresh_button_);
+    button_layout->addWidget(refresh_button_);
+
+    reload_button_ = new QPushButton("Reload Scenario", this);
+    button_layout->addWidget(reload_button_);
+
+    layout->addLayout(button_layout);
+
+    status_label_ = new QLabel("Waiting for fault injector services", this);
+    layout->addWidget(status_label_);
 
     table_ = new QTableWidget(this);
     table_->setColumnCount(5);
@@ -38,6 +48,7 @@ namespace ros2_fault_injection_rviz
     layout->addWidget(table_);
 
     connect(refresh_button_, &QPushButton::clicked, this, &FaultInjectionPanel::refresh);
+    connect(reload_button_, &QPushButton::clicked, this, &FaultInjectionPanel::reload_scenario);
   }
 
   void FaultInjectionPanel::setup_ros()
@@ -49,6 +60,9 @@ namespace ros2_fault_injection_rviz
     status_client_ =
         node_->create_client<ros2_fault_injection::srv::GetFaultStatus>(
             "/fault_injection/get_fault_status");
+    reload_client_ =
+        node_->create_client<ros2_fault_injection::srv::ReloadScenario>(
+            "/fault_injection/reload_scenario");
     set_state_client_ =
         node_->create_client<ros2_fault_injection::srv::SetFaultState>(
             "/fault_injection/set_fault_state");
@@ -71,6 +85,7 @@ namespace ros2_fault_injection_rviz
     if (!status_client_->service_is_ready())
     {
       table_->setRowCount(0);
+      set_status_message("Waiting for /fault_injection/get_fault_status");
       return;
     }
 
@@ -115,12 +130,47 @@ namespace ros2_fault_injection_rviz
 
     table_->resizeColumnsToContents();
     table_->horizontalHeader()->setStretchLastSection(true);
+
+    set_status_message(QString("Loaded %1 faults").arg(response.faults.size()));
+  }
+
+  void FaultInjectionPanel::reload_scenario()
+  {
+    if (!reload_client_ || !reload_client_->service_is_ready())
+    {
+      set_status_message("Waiting for /fault_injection/reload_scenario");
+      return;
+    }
+
+    set_status_message("Reloading scenario...");
+
+    auto request = std::make_shared<ros2_fault_injection::srv::ReloadScenario::Request>();
+    reload_client_->async_send_request(
+        request,
+        [this](rclcpp::Client<ros2_fault_injection::srv::ReloadScenario>::SharedFuture future)
+        {
+          handle_reload_response(future);
+        });
+  }
+
+  void FaultInjectionPanel::handle_reload_response(
+      rclcpp::Client<ros2_fault_injection::srv::ReloadScenario>::SharedFuture future)
+  {
+    const auto response = future.get();
+
+    set_status_message(QString::fromStdString(response->message));
+
+    if (response->success)
+    {
+      refresh();
+    }
   }
 
   void FaultInjectionPanel::set_fault_state(const std::string &fault_id, bool active)
   {
     if (!set_state_client_ || !set_state_client_->service_is_ready())
     {
+      set_status_message("Waiting for /fault_injection/set_fault_state");
       return;
     }
 
@@ -141,9 +191,19 @@ namespace ros2_fault_injection_rviz
   {
     const auto response = future.get();
 
+    set_status_message(QString::fromStdString(response->message));
+
     if (response->success)
     {
       refresh();
+    }
+  }
+
+  void FaultInjectionPanel::set_status_message(const QString &message)
+  {
+    if (status_label_)
+    {
+      status_label_->setText(message);
     }
   }
 

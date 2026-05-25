@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include <QLabel>
 #include <QPushButton>
 #include <QTableWidget>
 
@@ -13,6 +14,7 @@
 #include <QTimer>
 
 #include "ros2_fault_injection/srv/get_fault_status.hpp"
+#include "ros2_fault_injection/srv/reload_scenario.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 
 namespace ros2_fault_injection_rviz
@@ -29,6 +31,7 @@ namespace ros2_fault_injection_rviz
 
   private Q_SLOTS:
     void refresh();
+    void reload_scenario();
 
   private:
     void setup_ui();
@@ -38,14 +41,19 @@ namespace ros2_fault_injection_rviz
     void set_status_message(const QString &message);
     void handle_set_state_response(
         rclcpp::Client<ros2_fault_injection::srv::SetFaultState>::SharedFuture future);
+    void handle_reload_response(
+        rclcpp::Client<ros2_fault_injection::srv::ReloadScenario>::SharedFuture future);
     void set_fault_state(const std::string &fault_id, bool active);
     void populate_table(const ros2_fault_injection::srv::GetFaultStatus::Response &response);
 
     QPushButton *refresh_button_{nullptr};
+    QPushButton *reload_button_{nullptr};
+    QLabel *status_label_{nullptr};
     QTableWidget *table_{nullptr};
 
     rclcpp::Node::SharedPtr node_;
     rclcpp::Client<ros2_fault_injection::srv::GetFaultStatus>::SharedPtr status_client_;
+    rclcpp::Client<ros2_fault_injection::srv::ReloadScenario>::SharedPtr reload_client_;
     rclcpp::Client<ros2_fault_injection::srv::SetFaultState>::SharedPtr set_state_client_;
     QTimer *spin_timer_{nullptr};
     rclcpp::executors::SingleThreadedExecutor executor_;

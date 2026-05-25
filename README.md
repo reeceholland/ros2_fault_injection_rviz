@@ -17,7 +17,9 @@ ros2_fault_injection_rviz/FaultInjectionPanel
   - active/inactive state
   - fault details
 - Provides a refresh button
+- Provides a scenario reload button using `/fault_injection/reload_scenario`
 - Provides per-fault Activate/Deactivate buttons using `/fault_injection/set_fault_state`
+- Shows a short status message for service calls
 
 ## Expected Services
 
@@ -25,6 +27,7 @@ The core fault injector node should be running and providing:
 
 ```text
 /fault_injection/get_fault_status
+/fault_injection/reload_scenario
 /fault_injection/set_fault_state
 ```
 
@@ -32,6 +35,7 @@ The panel uses service types from the `ros2_fault_injection` package:
 
 ```text
 ros2_fault_injection/srv/GetFaultStatus
+ros2_fault_injection/srv/ReloadScenario
 ros2_fault_injection/srv/SetFaultState
 ```
 
@@ -81,6 +85,8 @@ ros2 launch ros2_fault_injection fault_injector.launch.py \
 Open RViz, add the panel, then use `Refresh` to load the current faults.
 
 Use the per-row button to activate or deactivate a fault. The panel refreshes after a successful state change.
+
+Use `Reload Scenario` after editing the scenario YAML. The panel asks the running fault injector to reload the same scenario file it was launched with, then refreshes the table if the reload succeeds.
 
 ## Troubleshooting
 
