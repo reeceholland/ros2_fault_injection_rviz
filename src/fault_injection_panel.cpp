@@ -44,6 +44,18 @@ namespace ros2_fault_injection_rviz
 
     layout->addWidget(table_);
 
+    layout->addWidget(new QLabel("Recent Events", this));
+
+    events_table_ = new QTableWidget(this);
+    events_table_->setColumnCount(5);
+    events_table_->setHorizontalHeaderLabels(
+        QStringList{"Time", "Source", "Fault ID", "State", "Details"});
+    events_table_->horizontalHeader()->setStretchLastSection(true);
+    events_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    events_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    layout->addWidget(events_table_);
+
     connect(reload_button_, &QPushButton::clicked, this, &FaultInjectionPanel::reload_scenario);
   }
 
@@ -62,6 +74,13 @@ namespace ros2_fault_injection_rviz
     set_state_client_ =
         node_->create_client<ros2_fault_injection::srv::SetFaultState>(
             "/fault_injection/set_fault_state");
+
+    event_subscription_ = node_->create_subscription<ros2_fault_injection::msg::FaultEvent>(
+        "/fault_injection/events", 10,
+        [this](const ros2_fault_injection::msg::FaultEvent &event)
+        {
+          handle_fault_event(event);
+        });
 
     spin_timer_ = new QTimer(this);
     connect(spin_timer_, &QTimer::timeout, this, [this]()
@@ -209,6 +228,39 @@ namespace ros2_fault_injection_rviz
     }
   }
 
+  void FaultInjectionPanel::handle_fault_event(const ros2_fault_injection::msg::FaultEvent &event)
+  {
+    add_event_row(event);
+  }
+
+  void FaultInjectionPanel::add_event_row(
+      const ros2_fault_injection::msg::FaultEvent &event)
+  {
+    if (!events_table_)
+    {
+      return;
+    }
+
+    events_table_->insertRow(0);
+
+    const double seconds =
+        static_cast<double>(event.stamp.sec) +
+        static_cast<double>(event.stamp.nanosec) / 1e9;
+
+    events_table_->setItem(0, 0, new QTableWidgetItem(QString::number(seconds, 'f', 3)));
+    events_table_->setItem(0, 1, new QTableWidgetItem(QString::fromStdString(event.source)));
+    events_table_->setItem(0, 2, new QTableWidgetItem(QString::fromStdString(event.fault_id)));
+    events_table_->setItem(0, 3, new QTableWidgetItem(QString::fromStdString(event.state)));
+    events_table_->setItem(0, 4, new QTableWidgetItem(QString::fromStdString(event.details)));
+
+    while (events_table_->rowCount() > 20)
+    {
+      events_table_->removeRow(events_table_->rowCount() - 1);
+    }
+
+    events_table_->resizeColumnsToContents();
+    events_table_->horizontalHeader()->setStretchLastSection(true);
+  }
 } // namespace ros2_fault_injection_rviz
 
 PLUGINLIB_EXPORT_CLASS(ros2_fault_injection_rviz::FaultInjectionPanel, rviz_common::Panel)
