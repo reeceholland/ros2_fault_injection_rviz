@@ -72,6 +72,7 @@ namespace ros2_fault_injection_rviz
     std::string selected_fault_id_;
     std::string selected_injector_id_;
 
+    QLabel *config_set_label_{nullptr};
     QLineEdit *config_key_edit_{nullptr};
     QLineEdit *config_value_edit_{nullptr};
     QPushButton *set_config_button_{nullptr};

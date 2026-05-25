@@ -66,6 +66,10 @@ namespace ros2_fault_injection_rviz
     layout->addWidget(config_key_edit_);
     layout->addWidget(config_value_edit_);
     layout->addWidget(set_config_button_);
+    config_set_label_ = new QLabel(this);
+    layout->addWidget(config_set_label_);
+    set_config_button_->setEnabled(false);
+    config_set_label_->setText("Select a fault to edit its config");
 
     connect(reload_button_, &QPushButton::clicked, this, &FaultInjectionPanel::reload_scenario);
     connect(set_config_button_, &QPushButton::clicked, this, &FaultInjectionPanel::on_set_config_clicked);
@@ -291,10 +295,11 @@ namespace ros2_fault_injection_rviz
       config_key_edit_->clear();
       config_value_edit_->clear();
       set_config_button_->setEnabled(false);
-      status_label_->setText("Select a fault to edit its config");
+      config_set_label_->setText("Select a fault to edit its config");
       return;
     }
 
+    config_set_label_->setText("");
     const int row = selected_items.front()->row();
 
     const auto fault_id_item = table_->item(row, 1);
@@ -306,7 +311,7 @@ namespace ros2_fault_injection_rviz
       selected_injector_id_.clear();
 
       set_config_button_->setEnabled(false);
-      status_label_->setText("Selected row is missing fault information");
+      config_set_label_->setText("Selected row is missing fault information");
       return;
     }
 
@@ -314,7 +319,7 @@ namespace ros2_fault_injection_rviz
     selected_injector_id_ = injector_id_item->text().toStdString();
 
     set_config_button_->setEnabled(true);
-    status_label_->setText("Selected fault: " + QString::fromStdString(selected_fault_id_));
+    config_set_label_->setText("Selected fault: " + QString::fromStdString(selected_fault_id_));
   }
 
   void FaultInjectionPanel::on_set_config_clicked()
@@ -322,12 +327,12 @@ namespace ros2_fault_injection_rviz
 
     if (!set_config_client_ || !set_config_client_->service_is_ready())
     {
-      set_status_message("Waiting for /fault_injection/set_fault_config");
+      config_set_label_->setText("Waiting for /fault_injection/set_fault_config");
       return;
     }
     if (selected_fault_id_.empty())
     {
-      status_label_->setText("Select a fault before editing config");
+      config_set_label_->setText("Select a fault before editing config");
       return;
     }
 
@@ -336,22 +341,22 @@ namespace ros2_fault_injection_rviz
 
     if (key.empty())
     {
-      status_label_->setText("Config key cannot be empty");
+      config_set_label_->setText("Config key cannot be empty");
       return;
     }
 
     if (value.empty())
     {
-      status_label_->setText("Config value cannot be empty");
+      config_set_label_->setText("Config value cannot be empty");
       return;
     }
-
+    config_set_label_->setText("");
     auto request = std::make_shared<ros2_fault_injection::srv::SetFaultConfig::Request>();
     request->fault_id = selected_fault_id_;
     request->key = key;
     request->value = value;
 
-    status_label_->setText("Updating " + QString::fromStdString(selected_fault_id_) + ": " + QString::fromStdString(key) + " = " + QString::fromStdString(value));
+    config_set_label_->setText("Updating " + QString::fromStdString(selected_fault_id_) + ": " + QString::fromStdString(key) + " = " + QString::fromStdString(value));
 
     auto future = set_config_client_->async_send_request(request, [this](rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedFuture future)
                                                          { set_config_response_callback(future); });
@@ -362,7 +367,7 @@ namespace ros2_fault_injection_rviz
   {
     const auto response = future.get();
 
-    set_status_message(QString::fromStdString(response->message));
+    config_set_label_->setText(QString::fromStdString(response->message));
 
     if (response->success)
     {
