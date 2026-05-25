@@ -46,7 +46,6 @@ namespace ros2_fault_injection_rviz
     void set_fault_state(const std::string &fault_id, bool active);
     void populate_table(const ros2_fault_injection::srv::GetFaultStatus::Response &response);
 
-    QPushButton *refresh_button_{nullptr};
     QPushButton *reload_button_{nullptr};
     QLabel *status_label_{nullptr};
     QTableWidget *table_{nullptr};
@@ -56,6 +55,8 @@ namespace ros2_fault_injection_rviz
     rclcpp::Client<ros2_fault_injection::srv::ReloadScenario>::SharedPtr reload_client_;
     rclcpp::Client<ros2_fault_injection::srv::SetFaultState>::SharedPtr set_state_client_;
     QTimer *spin_timer_{nullptr};
+    QTimer *status_timer_{nullptr};
+    bool status_request_in_flight_{false};
     rclcpp::executors::SingleThreadedExecutor executor_;
   };
 

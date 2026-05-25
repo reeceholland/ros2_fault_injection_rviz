@@ -27,9 +27,6 @@ namespace ros2_fault_injection_rviz
     auto *layout = new QVBoxLayout(this);
     auto *button_layout = new QHBoxLayout();
 
-    refresh_button_ = new QPushButton("Refresh", this);
-    button_layout->addWidget(refresh_button_);
-
     reload_button_ = new QPushButton("Reload Scenario", this);
     button_layout->addWidget(reload_button_);
 
@@ -47,7 +44,6 @@ namespace ros2_fault_injection_rviz
 
     layout->addWidget(table_);
 
-    connect(refresh_button_, &QPushButton::clicked, this, &FaultInjectionPanel::refresh);
     connect(reload_button_, &QPushButton::clicked, this, &FaultInjectionPanel::reload_scenario);
   }
 
@@ -72,12 +68,16 @@ namespace ros2_fault_injection_rviz
             { executor_.spin_some(); });
     spin_timer_->start(50);
 
+    status_timer_ = new QTimer(this);
+    connect(status_timer_, &QTimer::timeout, this, &FaultInjectionPanel::refresh);
+    status_timer_->start(1000);
+
     refresh();
   }
 
   void FaultInjectionPanel::refresh()
   {
-    if (!status_client_)
+    if (!status_client_ || status_request_in_flight_)
     {
       return;
     }
@@ -90,6 +90,7 @@ namespace ros2_fault_injection_rviz
     }
 
     auto request = std::make_shared<ros2_fault_injection::srv::GetFaultStatus::Request>();
+    status_request_in_flight_ = true;
 
     status_client_->async_send_request(
         request,
@@ -102,6 +103,7 @@ namespace ros2_fault_injection_rviz
   void FaultInjectionPanel::handle_status_response(
       rclcpp::Client<ros2_fault_injection::srv::GetFaultStatus>::SharedFuture future)
   {
+    status_request_in_flight_ = false;
     populate_table(*future.get());
   }
 
