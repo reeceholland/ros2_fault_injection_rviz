@@ -7,6 +7,7 @@
 #include <QPushButton>
 #include <QTableWidget>
 #include <QTimer>
+#include <QComboBox>
 
 #include <rclcpp/client.hpp>
 #include <rclcpp/executors/single_threaded_executor.hpp>
@@ -19,6 +20,7 @@
 #include "ros2_fault_injection/srv/reload_scenario.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
 #include "ros2_fault_injection/srv/set_fault_config.hpp"
+#include "ros2_fault_injection/srv/get_fault_schema.hpp"
 
 namespace ros2_fault_injection_rviz
 {
@@ -54,6 +56,8 @@ namespace ros2_fault_injection_rviz
     void on_set_config_clicked();
     void set_config_response_callback(
         rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedFuture future);
+    void get_schema_response_callback(
+        rclcpp::Client<ros2_fault_injection::srv::GetFaultSchema>::SharedFuture future);
 
     QPushButton *reload_button_{nullptr};
     QLabel *status_label_{nullptr};
@@ -73,10 +77,11 @@ namespace ros2_fault_injection_rviz
     std::string selected_injector_id_;
 
     QLabel *config_set_label_{nullptr};
-    QLineEdit *config_key_edit_{nullptr};
     QLineEdit *config_value_edit_{nullptr};
     QPushButton *set_config_button_{nullptr};
     rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedPtr set_config_client_;
+    rclcpp::Client<ros2_fault_injection::srv::GetFaultSchema>::SharedPtr get_schema_client_;
+    QComboBox *config_key_dropdown_{nullptr};
   };
 
 } // namespace ros2_fault_injection_rviz

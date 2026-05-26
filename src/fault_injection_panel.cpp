@@ -56,14 +56,14 @@ namespace ros2_fault_injection_rviz
     events_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout->addWidget(events_table_);
 
-    config_key_edit_ = new QLineEdit(this);
+    config_key_dropdown_ = new QComboBox(this);
     config_value_edit_ = new QLineEdit(this);
     set_config_button_ = new QPushButton("Set Config", this);
 
     layout->addWidget(new QLabel("Fault Config", this));
-    config_key_edit_->setPlaceholderText("Config key, e.g. x_bias");
+
     config_value_edit_->setPlaceholderText("Value, e.g. 1.5");
-    layout->addWidget(config_key_edit_);
+    layout->addWidget(config_key_dropdown_);
     layout->addWidget(config_value_edit_);
     layout->addWidget(set_config_button_);
     config_set_label_ = new QLabel(this);
@@ -102,6 +102,10 @@ namespace ros2_fault_injection_rviz
     set_config_client_ =
         node_->create_client<ros2_fault_injection::srv::SetFaultConfig>(
             "/fault_injection/set_fault_config");
+
+    get_schema_client_ =
+        node_->create_client<ros2_fault_injection::srv::GetFaultSchema>(
+            "/fault_injection/get_fault_schema");
 
     spin_timer_ = new QTimer(this);
     connect(spin_timer_, &QTimer::timeout, this, [this]()
@@ -292,7 +296,7 @@ namespace ros2_fault_injection_rviz
       selected_fault_id_.clear();
       selected_injector_id_.clear();
 
-      config_key_edit_->clear();
+      config_key_dropdown_->clear();
       config_value_edit_->clear();
       set_config_button_->setEnabled(false);
       config_set_label_->setText("Select a fault to edit its config");
@@ -310,6 +314,7 @@ namespace ros2_fault_injection_rviz
       selected_fault_id_.clear();
       selected_injector_id_.clear();
 
+      config_key_dropdown_->clear();
       set_config_button_->setEnabled(false);
       config_set_label_->setText("Selected row is missing fault information");
       return;
@@ -318,8 +323,60 @@ namespace ros2_fault_injection_rviz
     selected_fault_id_ = fault_id_item->text().toStdString();
     selected_injector_id_ = injector_id_item->text().toStdString();
 
-    set_config_button_->setEnabled(true);
-    config_set_label_->setText("Selected fault: " + QString::fromStdString(selected_fault_id_));
+    if (!get_schema_client_ || !get_schema_client_->service_is_ready())
+    {
+      config_key_dropdown_->clear();
+      set_config_button_->setEnabled(false);
+      config_set_label_->setText("Waiting for /fault_injection/get_fault_schema");
+      return;
+    }
+
+    set_config_button_->setEnabled(false);
+    config_key_dropdown_->clear();
+    config_set_label_->setText("Loading config keys for " +
+                               QString::fromStdString(selected_fault_id_));
+
+    auto request = std::make_shared<ros2_fault_injection::srv::GetFaultSchema::Request>();
+    request->fault_id = selected_fault_id_;
+
+    const auto requested_fault_id = selected_fault_id_;
+    get_schema_client_->async_send_request(
+        request,
+        [this, requested_fault_id](
+            rclcpp::Client<ros2_fault_injection::srv::GetFaultSchema>::SharedFuture future)
+        {
+          if (requested_fault_id != selected_fault_id_)
+          {
+            return;
+          }
+
+          get_schema_response_callback(future);
+        });
+  }
+
+  void FaultInjectionPanel::get_schema_response_callback(
+      rclcpp::Client<ros2_fault_injection::srv::GetFaultSchema>::SharedFuture future)
+  {
+    const auto response = future.get();
+
+    if (!response->success)
+    {
+      config_key_dropdown_->clear();
+      set_config_button_->setEnabled(false);
+      config_set_label_->setText("Failed to get fault schema: " +
+                                 QString::fromStdString(response->message));
+      return;
+    }
+
+    config_key_dropdown_->clear();
+    for (const auto &key : response->keys)
+    {
+      config_key_dropdown_->addItem(QString::fromStdString(key));
+    }
+
+    set_config_button_->setEnabled(config_key_dropdown_->count() > 0);
+    config_set_label_->setText("Selected fault: " +
+                               QString::fromStdString(selected_fault_id_));
   }
 
   void FaultInjectionPanel::on_set_config_clicked()
@@ -336,7 +393,7 @@ namespace ros2_fault_injection_rviz
       return;
     }
 
-    const auto key = config_key_edit_->text().trimmed().toStdString();
+    const auto key = config_key_dropdown_->currentText().trimmed().toStdString();
     const auto value = config_value_edit_->text().trimmed().toStdString();
 
     if (key.empty())
@@ -358,8 +415,12 @@ namespace ros2_fault_injection_rviz
 
     config_set_label_->setText("Updating " + QString::fromStdString(selected_fault_id_) + ": " + QString::fromStdString(key) + " = " + QString::fromStdString(value));
 
-    auto future = set_config_client_->async_send_request(request, [this](rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedFuture future)
-                                                         { set_config_response_callback(future); });
+    set_config_client_->async_send_request(
+        request,
+        [this](rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedFuture future)
+        {
+          set_config_response_callback(future);
+        });
   }
 
   void FaultInjectionPanel::set_config_response_callback(
