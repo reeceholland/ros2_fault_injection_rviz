@@ -10,11 +10,6 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Sphinx / documentation build output
-docs/_build/
-docs/_static/
-docs/_templates/
-
 # CMake and compiler by-products
 CMakeCache.txt
 CMakeFiles/

@@ -24,6 +24,7 @@ ros2_fault_injection_rviz/FaultInjectionPanel
 - Displays recent fault events from `/fault_injection/events`
 - Edits runtime fault config using `/fault_injection/set_fault_config`
 - Loads valid config keys for the selected fault from `/fault_injection/get_fault_schema`
+- Loads current runtime config values from `/fault_injection/get_fault_config`
 
 ## Expected ROS Interfaces
 
@@ -34,6 +35,7 @@ Services:
 ```text
 /fault_injection/get_fault_status
 /fault_injection/get_fault_schema
+/fault_injection/get_fault_config
 /fault_injection/reload_scenario
 /fault_injection/set_fault_state
 /fault_injection/set_fault_config
@@ -51,6 +53,7 @@ The panel uses message and service types from the `ros2_fault_injection` package
 ros2_fault_injection/msg/FaultEvent
 ros2_fault_injection/srv/GetFaultStatus
 ros2_fault_injection/srv/GetFaultSchema
+ros2_fault_injection/srv/GetFaultConfig
 ros2_fault_injection/srv/ReloadScenario
 ros2_fault_injection/srv/SetFaultState
 ros2_fault_injection/srv/SetFaultConfig
@@ -113,11 +116,13 @@ the same scenario file it was launched with, then refreshes the table if the rel
 Select a row in the fault table to edit that fault's runtime configuration.
 
 When a fault is selected, the panel calls `/fault_injection/get_fault_schema` and fills the config key
-dropdown with keys that are valid for that fault's injector type. Enter the new value and click
-`Set Config`.
+dropdown with keys that are valid for that fault's injector type. It then calls
+`/fault_injection/get_fault_config` and fills the value field with the current runtime value for the
+selected key. Change the value and click `Set Config`.
 
-The backend validates the value before applying it. For example, `drop_probability` must be a number
-between `0.0` and `1.0`; invalid values are rejected and the previous config remains unchanged.
+The backend validates the key and value before applying the update. For example, `drop_probability`
+must be a number between `0.0` and `1.0`; invalid values are rejected and the previous config remains
+unchanged.
 
 Config edits are runtime-only. To make a change permanent, update the scenario YAML as well.
 
@@ -153,6 +158,13 @@ Check that the fault injector services exist:
 ros2 service list | grep fault_injection
 ```
 
+Check that config values can be read:
+
+```bash
+ros2 service call /fault_injection/get_fault_config ros2_fault_injection/srv/GetFaultConfig \
+  "{fault_id: odom_bias}"
+```
+
 Check that events are being published:
 
 ```bash
@@ -168,6 +180,5 @@ rviz2
 ## Next Ideas
 
 - Add filtering by injector id or state
-- Show current config values next to editable keys
 - Add typed editors for numbers, booleans, and bounded values
 - Add a clear-events button
