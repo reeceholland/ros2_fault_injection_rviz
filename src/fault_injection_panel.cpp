@@ -215,6 +215,8 @@ namespace ros2_fault_injection_rviz
             &FaultInjectionPanel::on_fault_selection_changed);
     connect(config_key_dropdown_, &QComboBox::currentTextChanged, this,
             &FaultInjectionPanel::on_config_key_changed);
+    connect(config_table_, &QTableWidget::itemSelectionChanged, this,
+            &FaultInjectionPanel::on_config_table_selection_changed);
   }
 
   void FaultInjectionPanel::setup_ros()
@@ -801,6 +803,27 @@ namespace ros2_fault_injection_rviz
       config_table_->setItem(row, 3, new QTableWidgetItem(describe_limits(field)));
       config_table_->setItem(row, 4, new QTableWidgetItem(field.description));
     }
+  }
+
+  void FaultInjectionPanel::on_config_table_selection_changed()
+  {
+    const auto selected_items = config_table_->selectedItems();
+
+    if (selected_items.empty())
+    {
+      return;
+    }
+
+    const int row = selected_items.front()->row();
+    const auto key_item = config_table_->item(row, 0);
+
+    if (key_item == nullptr)
+    {
+      return;
+    }
+
+    const QString key = key_item->text();
+    config_key_dropdown_->setCurrentText(key);
   }
 } // namespace ros2_fault_injection_rviz
 
