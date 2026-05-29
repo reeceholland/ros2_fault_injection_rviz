@@ -569,32 +569,9 @@ namespace ros2_fault_injection_rviz
       config_key_dropdown_->addItem(field.key);
     }
 
-    if (!get_config_client_ || !get_config_client_->service_is_ready())
-    {
-      config_value_edit_->clear();
-      set_config_button_->setEnabled(false);
-      config_set_label_->setText("Waiting for /fault_injection/get_fault_config");
-      return;
-    }
-
     set_config_button_->setEnabled(config_key_dropdown_->count() > 0);
 
-    auto request = std::make_shared<ros2_fault_injection::srv::GetFaultConfig::Request>();
-    request->fault_id = selected_fault_.fault_id;
-
-    const auto requested_fault_id = selected_fault_.fault_id;
-    get_config_client_->async_send_request(
-        request,
-        [this, requested_fault_id](
-            rclcpp::Client<ros2_fault_injection::srv::GetFaultConfig>::SharedFuture future)
-        {
-          if (requested_fault_id != selected_fault_.fault_id)
-          {
-            return;
-          }
-
-          get_config_response_callback(future);
-        });
+    request_selected_fault_config();
   }
 
   void FaultInjectionPanel::get_config_response_callback(
@@ -773,7 +750,7 @@ namespace ros2_fault_injection_rviz
       {
         const double min_value = field->has_min_value ? field->min_value : -std::numeric_limits<double>::max();
         const double max_value = field->has_max_value ? field->max_value : std::numeric_limits<double>::max();
-        config_double_validator_->setRange(min_value, max_value);
+        config_double_validator_->setRange(min_value, max_value, 6);
         config_value_edit_->setValidator(config_double_validator_);
       }
     }
@@ -824,6 +801,39 @@ namespace ros2_fault_injection_rviz
 
     const QString key = key_item->text();
     config_key_dropdown_->setCurrentText(key);
+  }
+
+  void FaultInjectionPanel::request_selected_fault_config()
+  {
+    if (selected_fault_.injector_id.empty())
+    {
+      return;
+    }
+
+    if (!get_config_client_ || !get_config_client_->service_is_ready())
+    {
+      config_value_edit_->clear();
+      set_config_button_->setEnabled(false);
+      config_set_label_->setText("Waiting for /fault_injection/get_fault_config");
+      return;
+    }
+
+    auto request = std::make_shared<ros2_fault_injection::srv::GetFaultConfig::Request>();
+    request->fault_id = selected_fault_.fault_id;
+
+    const auto requested_fault_id = selected_fault_.fault_id;
+    get_config_client_->async_send_request(
+        request,
+        [this, requested_fault_id](
+            rclcpp::Client<ros2_fault_injection::srv::GetFaultConfig>::SharedFuture future)
+        {
+          if (requested_fault_id != selected_fault_.fault_id)
+          {
+            return;
+          }
+
+          get_config_response_callback(future);
+        });
   }
 } // namespace ros2_fault_injection_rviz
 

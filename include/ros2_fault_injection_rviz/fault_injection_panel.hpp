@@ -98,6 +98,7 @@ namespace ros2_fault_injection_rviz
     void on_set_config_clicked();
     void on_config_key_changed(const QString &key);
     void on_config_table_selection_changed();
+    void request_selected_fault_config();
     void set_config_response_callback(
         rclcpp::Client<ros2_fault_injection::srv::SetFaultConfig>::SharedFuture future);
     void get_schema_response_callback(
