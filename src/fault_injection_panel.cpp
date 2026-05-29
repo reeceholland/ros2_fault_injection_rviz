@@ -835,6 +835,24 @@ namespace ros2_fault_injection_rviz
           get_config_response_callback(future);
         });
   }
+
+  FaultInjectionPanel::~FaultInjectionPanel()
+  {
+    if (spin_timer_ != nullptr)
+    {
+      spin_timer_->stop();
+    }
+
+    if (status_timer_ != nullptr)
+    {
+      status_timer_->stop();
+    }
+
+    if (node_)
+    {
+      node_.reset();
+    }
+  }
 } // namespace ros2_fault_injection_rviz
 
 PLUGINLIB_EXPORT_CLASS(ros2_fault_injection_rviz::FaultInjectionPanel, rviz_common::Panel)

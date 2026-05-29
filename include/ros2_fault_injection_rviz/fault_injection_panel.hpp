@@ -73,6 +73,7 @@ namespace ros2_fault_injection_rviz
 
   public:
     explicit FaultInjectionPanel(QWidget *parent = nullptr);
+    ~FaultInjectionPanel() override;
 
     void onInitialize() override;
 
