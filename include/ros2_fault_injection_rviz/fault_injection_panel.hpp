@@ -22,6 +22,7 @@
 #include <rviz_common/panel.hpp>
 
 #include "ros2_fault_injection/msg/fault_event.hpp"
+#include "ros2_fault_injection/msg/assertion_event.hpp"
 #include "ros2_fault_injection/srv/get_fault_status.hpp"
 #include "ros2_fault_injection/srv/reload_scenario.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
@@ -94,7 +95,9 @@ namespace ros2_fault_injection_rviz
     void set_fault_state(const std::string &fault_id, bool active);
     void populate_table(const ros2_fault_injection::srv::GetFaultStatus::Response &response);
     void handle_fault_event(const ros2_fault_injection::msg::FaultEvent &event);
+    void handle_assertion_event(const ros2_fault_injection::msg::AssertionEvent &event);
     void add_event_row(const ros2_fault_injection::msg::FaultEvent &event);
+    void add_assertion_event_row(const ros2_fault_injection::msg::AssertionEvent &event);
     void on_fault_selection_changed();
     void on_set_config_clicked();
     void on_config_key_changed(const QString &key);
@@ -120,6 +123,7 @@ namespace ros2_fault_injection_rviz
     rclcpp::Client<ros2_fault_injection::srv::ReloadScenario>::SharedPtr reload_client_;
     rclcpp::Client<ros2_fault_injection::srv::SetFaultState>::SharedPtr set_state_client_;
     rclcpp::Subscription<ros2_fault_injection::msg::FaultEvent>::SharedPtr event_subscription_;
+    rclcpp::Subscription<ros2_fault_injection::msg::AssertionEvent>::SharedPtr assertion_subscription_;
     QTimer *spin_timer_{nullptr};
     QTimer *status_timer_{nullptr};
     bool status_request_in_flight_{false};
@@ -138,9 +142,11 @@ namespace ros2_fault_injection_rviz
     QWidget *faults_tab_{nullptr};
     QWidget *events_tab_{nullptr};
     QWidget *config_tab_{nullptr};
+    QWidget *assertions_tab_{nullptr};
     QLabel *selected_fault_label_{nullptr};
 
     QTableWidget *config_table_{nullptr};
+    QTableWidget *assertions_table_{nullptr};
   };
 
 } // namespace ros2_fault_injection_rviz
