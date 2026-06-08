@@ -130,10 +130,11 @@ namespace ros2_fault_injection_rviz
     faults_tab_ = new QWidget(this);
     events_tab_ = new QWidget(this);
     config_tab_ = new QWidget(this);
-
+    assertions_tab_ = new QWidget(this);
     tabs_->addTab(faults_tab_, "Faults");
     tabs_->addTab(events_tab_, "Events");
     tabs_->addTab(config_tab_, "Config");
+    tabs_->addTab(assertions_tab_, "Assertions");
 
     layout->addWidget(tabs_);
 
@@ -208,6 +209,16 @@ namespace ros2_fault_injection_rviz
     events_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     events_layout->addWidget(events_table_);
 
+    auto *assertions_layout = new QVBoxLayout(assertions_tab_);
+    assertions_table_ = new QTableWidget(assertions_tab_);
+    assertions_table_->setColumnCount(5);
+    assertions_table_->setHorizontalHeaderLabels(
+        QStringList{"Time", "Assertion ID", "Type", "State", "Message"});
+    assertions_table_->horizontalHeader()->setStretchLastSection(true);
+    assertions_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    assertions_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    assertions_layout->addWidget(assertions_table_);
+
     connect(reload_button_, &QPushButton::clicked, this, &FaultInjectionPanel::reload_scenario);
     connect(set_config_button_, &QPushButton::clicked, this,
             &FaultInjectionPanel::on_set_config_clicked);
@@ -240,6 +251,12 @@ namespace ros2_fault_injection_rviz
         [this](const ros2_fault_injection::msg::FaultEvent &event)
         {
           handle_fault_event(event);
+        });
+    assertion_subscription_ = node_->create_subscription<ros2_fault_injection::msg::AssertionEvent>(
+        "/fault_injection/assertion_events", 10,
+        [this](const ros2_fault_injection::msg::AssertionEvent &event)
+        {
+          handle_assertion_event(event);
         });
 
     set_config_client_ =
@@ -834,6 +851,26 @@ namespace ros2_fault_injection_rviz
 
           get_config_response_callback(future);
         });
+  }
+
+  void FaultInjectionPanel::handle_assertion_event(const ros2_fault_injection::msg::AssertionEvent &event)
+  {
+    add_assertion_event_row(event);
+  }
+
+  void FaultInjectionPanel::add_assertion_event_row(const ros2_fault_injection::msg::AssertionEvent &event)
+  {
+    if (!assertions_table_)
+    {
+      return;
+    }
+    const int row = assertions_table_->rowCount();
+    assertions_table_->insertRow(row);
+    assertions_table_->setItem(row, 0, new QTableWidgetItem(QString::number(event.stamp.sec) + "." + QString::number(event.stamp.nanosec)));
+    assertions_table_->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(event.assertion_id)));
+    assertions_table_->setItem(row, 2, new QTableWidgetItem(QString::fromStdString(event.assertion_type)));
+    assertions_table_->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(event.state)));
+    assertions_table_->setItem(row, 4, new QTableWidgetItem(QString::fromStdString(event.message)));
   }
 
   FaultInjectionPanel::~FaultInjectionPanel()
