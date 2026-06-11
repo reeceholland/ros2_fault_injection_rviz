@@ -864,13 +864,40 @@ namespace ros2_fault_injection_rviz
     {
       return;
     }
-    const int row = assertions_table_->rowCount();
-    assertions_table_->insertRow(row);
-    assertions_table_->setItem(row, 0, new QTableWidgetItem(QString::number(event.stamp.sec) + "." + QString::number(event.stamp.nanosec)));
-    assertions_table_->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(event.assertion_id)));
-    assertions_table_->setItem(row, 2, new QTableWidgetItem(QString::fromStdString(event.assertion_type)));
-    assertions_table_->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(event.state)));
-    assertions_table_->setItem(row, 4, new QTableWidgetItem(QString::fromStdString(event.message)));
+
+    assertions_table_->insertRow(0);
+    const double seconds =
+        static_cast<double>(event.stamp.sec) +
+        static_cast<double>(event.stamp.nanosec) / 1e9;
+
+    assertions_table_->setItem(0, 0, new QTableWidgetItem(QString::number(seconds, 'f', 3)));
+    assertions_table_->setItem(0, 1, new QTableWidgetItem(QString::fromStdString(event.assertion_id)));
+    assertions_table_->setItem(0, 2, new QTableWidgetItem(QString::fromStdString(event.assertion_type)));
+    assertions_table_->setItem(0, 3, new QTableWidgetItem(QString::fromStdString(event.state)));
+    assertions_table_->setItem(0, 4, new QTableWidgetItem(QString::fromStdString(event.message)));
+
+    if (event.state == "passed")
+    {
+      for (int col = 0; col < assertions_table_->columnCount(); ++col)
+      {
+        assertions_table_->item(0, col)->setBackground(Qt::green);
+      }
+    }
+    else if (event.state == "failed")
+    {
+      for (int col = 0; col < assertions_table_->columnCount(); ++col)
+      {
+        assertions_table_->item(0, col)->setBackground(Qt::red);
+      }
+    }
+
+    while (assertions_table_->rowCount() > 20)
+    {
+      assertions_table_->removeRow(assertions_table_->rowCount() - 1);
+    }
+
+    assertions_table_->resizeColumnsToContents();
+    assertions_table_->horizontalHeader()->setStretchLastSection(true);
   }
 
   FaultInjectionPanel::~FaultInjectionPanel()
