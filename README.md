@@ -22,6 +22,7 @@ ros2_fault_injection_rviz/FaultInjectionPanel
 - Activates and deactivates faults using `/fault_injection/set_fault_state`
 - Reloads the active scenario using `/fault_injection/reload_scenario`
 - Displays recent fault events from `/fault_injection/events`
+- Displays assertion results from `/fault_injection/assertion_events`
 - Edits runtime fault config using `/fault_injection/set_fault_config`
 - Loads valid config keys for the selected fault from `/fault_injection/get_fault_schema`
 - Loads current runtime config values from `/fault_injection/get_fault_config`
@@ -41,16 +42,18 @@ Services:
 /fault_injection/set_fault_config
 ```
 
-Topic:
+Topics:
 
 ```text
 /fault_injection/events
+/fault_injection/assertion_events
 ```
 
 The panel uses message and service types from the `ros2_fault_injection` package:
 
 ```text
 ros2_fault_injection/msg/FaultEvent
+ros2_fault_injection/msg/AssertionEvent
 ros2_fault_injection/srv/GetFaultStatus
 ros2_fault_injection/srv/GetFaultSchema
 ros2_fault_injection/srv/GetFaultConfig
@@ -132,6 +135,20 @@ The `Recent Events` table subscribes to `/fault_injection/events` and shows the 
 including manual state changes, scheduled state changes, scenario reloads, and config updates. The table
 keeps the newest events at the top.
 
+## Assertions
+
+The `Assertions` table subscribes to `/fault_injection/assertion_events` and shows assertion results
+published by the running fault injector. Rows are inserted newest-first so the latest scenario outcome
+is visible at the top of the table.
+
+Assertion rows are color-coded by state:
+
+- `passed` rows are shown in green.
+- `failed` rows are shown in red.
+
+Assertion events are not latched. Open the panel before the relevant assertion passes or fails, or reload
+the scenario to generate fresh assertion events.
+
 ## Troubleshooting
 
 Check that RViz can discover the package:
@@ -165,10 +182,16 @@ ros2 service call /fault_injection/get_fault_config ros2_fault_injection/srv/Get
   "{fault_id: odom_bias}"
 ```
 
-Check that events are being published:
+Check that fault events are being published:
 
 ```bash
 ros2 topic echo /fault_injection/events
+```
+
+Check that assertion events are being published:
+
+```bash
+ros2 topic echo /fault_injection/assertion_events
 ```
 
 If the plugin fails to load, start RViz from a terminal and inspect the pluginlib error:
