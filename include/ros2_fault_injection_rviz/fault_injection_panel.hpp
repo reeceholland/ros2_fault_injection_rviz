@@ -23,6 +23,7 @@
 
 #include "ros2_fault_injection/msg/fault_event.hpp"
 #include "ros2_fault_injection/msg/assertion_event.hpp"
+#include "ros2_fault_injection/msg/scenario_status.hpp"
 #include "ros2_fault_injection/srv/get_fault_status.hpp"
 #include "ros2_fault_injection/srv/reload_scenario.hpp"
 #include "ros2_fault_injection/srv/set_fault_state.hpp"
@@ -110,6 +111,7 @@ namespace ros2_fault_injection_rviz
     void get_config_response_callback(
         rclcpp::Client<ros2_fault_injection::srv::GetFaultConfig>::SharedFuture future);
     void update_config_table();
+    void handle_scenario_status(const ros2_fault_injection::msg::ScenarioStatus &status);
     QPushButton *reload_button_{nullptr};
     QLabel *status_label_{nullptr};
     QTableWidget *table_{nullptr};
@@ -124,6 +126,8 @@ namespace ros2_fault_injection_rviz
     rclcpp::Client<ros2_fault_injection::srv::SetFaultState>::SharedPtr set_state_client_;
     rclcpp::Subscription<ros2_fault_injection::msg::FaultEvent>::SharedPtr event_subscription_;
     rclcpp::Subscription<ros2_fault_injection::msg::AssertionEvent>::SharedPtr assertion_subscription_;
+    rclcpp::Subscription<ros2_fault_injection::msg::ScenarioStatus>::SharedPtr scenario_status_subscription_;
+
     QTimer *spin_timer_{nullptr};
     QTimer *status_timer_{nullptr};
     bool status_request_in_flight_{false};
@@ -143,10 +147,12 @@ namespace ros2_fault_injection_rviz
     QWidget *events_tab_{nullptr};
     QWidget *config_tab_{nullptr};
     QWidget *assertions_tab_{nullptr};
+    QWidget *scenario_status_tab_{nullptr};
     QLabel *selected_fault_label_{nullptr};
 
     QTableWidget *config_table_{nullptr};
     QTableWidget *assertions_table_{nullptr};
+    QTableWidget *scenario_status_table_{nullptr};
   };
 
 } // namespace ros2_fault_injection_rviz

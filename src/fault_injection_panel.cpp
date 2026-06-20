@@ -131,10 +131,12 @@ namespace ros2_fault_injection_rviz
     events_tab_ = new QWidget(this);
     config_tab_ = new QWidget(this);
     assertions_tab_ = new QWidget(this);
+    scenario_status_tab_ = new QWidget(this);
     tabs_->addTab(faults_tab_, "Faults");
     tabs_->addTab(events_tab_, "Events");
     tabs_->addTab(config_tab_, "Config");
     tabs_->addTab(assertions_tab_, "Assertions");
+    tabs_->addTab(scenario_status_tab_, "Scenario Status");
 
     layout->addWidget(tabs_);
 
@@ -219,6 +221,16 @@ namespace ros2_fault_injection_rviz
     assertions_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     assertions_layout->addWidget(assertions_table_);
 
+    auto *scenario_status_layout = new QVBoxLayout(scenario_status_tab_);
+    scenario_status_table_ = new QTableWidget(scenario_status_tab_);
+    scenario_status_table_->setColumnCount(4);
+    scenario_status_table_->setHorizontalHeaderLabels(
+        QStringList{"State", "Pending", "Passed", "Failed"});
+    scenario_status_table_->horizontalHeader()->setStretchLastSection(true);
+    scenario_status_table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    scenario_status_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    scenario_status_layout->addWidget(scenario_status_table_);
+
     connect(reload_button_, &QPushButton::clicked, this, &FaultInjectionPanel::reload_scenario);
     connect(set_config_button_, &QPushButton::clicked, this,
             &FaultInjectionPanel::on_set_config_clicked);
@@ -257,6 +269,13 @@ namespace ros2_fault_injection_rviz
         [this](const ros2_fault_injection::msg::AssertionEvent &event)
         {
           handle_assertion_event(event);
+        });
+
+    scenario_status_subscription_ = node_->create_subscription<ros2_fault_injection::msg::ScenarioStatus>(
+        "/fault_injection/scenario_status", 10,
+        [this](const ros2_fault_injection::msg::ScenarioStatus &status)
+        {
+          handle_scenario_status(status);
         });
 
     set_config_client_ =
@@ -898,6 +917,37 @@ namespace ros2_fault_injection_rviz
 
     assertions_table_->resizeColumnsToContents();
     assertions_table_->horizontalHeader()->setStretchLastSection(true);
+  }
+
+  void FaultInjectionPanel::handle_scenario_status(const ros2_fault_injection::msg::ScenarioStatus &status)
+  {
+    if (!scenario_status_table_)
+    {
+      return;
+    }
+
+    scenario_status_table_->setRowCount(0);
+    const int row = scenario_status_table_->rowCount();
+    scenario_status_table_->insertRow(row);
+    scenario_status_table_->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(status.state)));
+    scenario_status_table_->setItem(row, 1, new QTableWidgetItem(QString::number(status.pending_count)));
+    scenario_status_table_->setItem(row, 2, new QTableWidgetItem(QString::number(status.passed_count)));
+    scenario_status_table_->setItem(row, 3, new QTableWidgetItem(QString::number(status.failed_count)));
+
+    scenario_status_table_->horizontalHeader()->setStretchLastSection(true);
+
+    if (status.state == "running")
+    {
+      scenario_status_table_->item(row, 0)->setBackground(Qt::blue);
+    }
+    else if (status.state == "passed")
+    {
+      scenario_status_table_->item(row, 0)->setBackground(Qt::green);
+    }
+    else if (status.state == "failed")
+    {
+      scenario_status_table_->item(row, 0)->setBackground(Qt::red);
+    }
   }
 
   FaultInjectionPanel::~FaultInjectionPanel()
