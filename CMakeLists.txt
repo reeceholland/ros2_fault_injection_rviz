@@ -29,6 +29,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
   Qt5::Widgets
+  ros2_fault_injection::ros2_fault_injection__rosidl_typesupport_cpp
 )
 
 ament_target_dependencies(${PROJECT_NAME}
