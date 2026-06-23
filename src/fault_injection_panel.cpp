@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QPlainTextEdit>
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 #include <QLineEdit>
@@ -144,8 +145,10 @@ namespace ros2_fault_injection_rviz
     auto *faults_button_layout = new QHBoxLayout();
 
     reload_button_ = new QPushButton("Reload Scenario", faults_tab_);
+    view_scenario_button_ = new QPushButton("View Scenario File", faults_tab_);
 
     faults_button_layout->addWidget(reload_button_);
+    faults_button_layout->addWidget(view_scenario_button_);
     faults_layout->addLayout(faults_button_layout);
 
     status_label_ = new QLabel("Waiting for fault injector services", faults_tab_);
@@ -240,6 +243,8 @@ namespace ros2_fault_injection_rviz
             &FaultInjectionPanel::on_config_key_changed);
     connect(config_table_, &QTableWidget::itemSelectionChanged, this,
             &FaultInjectionPanel::on_config_table_selection_changed);
+    connect(view_scenario_button_, &QPushButton::clicked, this,
+            &FaultInjectionPanel::on_view_scenario_clicked);
   }
 
   void FaultInjectionPanel::setup_ros()
@@ -289,6 +294,10 @@ namespace ros2_fault_injection_rviz
     get_config_client_ =
         node_->create_client<ros2_fault_injection::srv::GetFaultConfig>(
             "/fault_injection/get_fault_config");
+
+    get_scenario_client_ =
+        node_->create_client<ros2_fault_injection::srv::GetScenario>(
+            "/fault_injection/get_scenario");
 
     spin_timer_ = new QTimer(this);
     connect(spin_timer_, &QTimer::timeout, this, [this]()
@@ -948,6 +957,65 @@ namespace ros2_fault_injection_rviz
     {
       scenario_status_table_->item(row, 0)->setBackground(Qt::red);
     }
+  }
+
+  void FaultInjectionPanel::on_view_scenario_clicked()
+  {
+    if (!get_scenario_client_ || !get_scenario_client_->service_is_ready())
+    {
+      set_status_message("Waiting for /fault_injection/get_scenario");
+      return;
+    }
+
+    auto request = std::make_shared<ros2_fault_injection::srv::GetScenario::Request>();
+    get_scenario_client_->async_send_request(
+        request,
+        [this](rclcpp::Client<ros2_fault_injection::srv::GetScenario>::SharedFuture future)
+        {
+          get_scenario_response_callback(future);
+        });
+  }
+
+  void FaultInjectionPanel::get_scenario_response_callback(
+      rclcpp::Client<ros2_fault_injection::srv::GetScenario>::SharedFuture future)
+  {
+    const auto response = future.get();
+
+    if (!response->success)
+    {
+      set_status_message("Failed to get scenario: " + QString::fromStdString(response->message));
+      return;
+    }
+
+    const auto title =
+        QString("Scenario: %1").arg(QString::fromStdString(response->scenario_file));
+
+    show_scenario_popup(title, QString::fromStdString(response->content));
+  }
+
+  void FaultInjectionPanel::show_scenario_popup(
+      const QString &title,
+      const QString &content)
+  {
+    auto *dialog = new QDialog(this);
+    dialog->setWindowTitle(title);
+    dialog->resize(900, 700);
+
+    auto *layout = new QVBoxLayout(dialog);
+
+    auto *text = new QPlainTextEdit(dialog);
+    text->setPlainText(content);
+    text->setReadOnly(true);
+    text->setLineWrapMode(QPlainTextEdit::NoWrap);
+
+    auto *close_button = new QPushButton("Close", dialog);
+
+    layout->addWidget(text);
+    layout->addWidget(close_button);
+
+    connect(close_button, &QPushButton::clicked, dialog, &QDialog::accept);
+
+    dialog->exec();
   }
 
   FaultInjectionPanel::~FaultInjectionPanel()
