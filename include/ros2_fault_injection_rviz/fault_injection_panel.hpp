@@ -33,6 +33,7 @@
 #include "ros2_fault_injection/srv/get_fault_schema.hpp"
 #include "ros2_fault_injection/srv/get_fault_config.hpp"
 #include "ros2_fault_injection/srv/get_scenario.hpp"
+#include "ros2_fault_injection/srv/request_report.hpp"
 
 namespace ros2_fault_injection_rviz
 {
@@ -119,6 +120,10 @@ namespace ros2_fault_injection_rviz
         rclcpp::Client<ros2_fault_injection::srv::GetFaultConfig>::SharedFuture future);
     void update_config_table();
     void handle_scenario_status(const ros2_fault_injection::msg::ScenarioStatus &status);
+    void on_request_report_clicked();
+    void handle_request_report_response(
+        rclcpp::Client<ros2_fault_injection::srv::RequestReport>::SharedFuture future);
+    void show_report_popup(const QString &title, const QString &content);
     QPushButton *reload_button_{nullptr};
     QLabel *status_label_{nullptr};
     QTableWidget *table_{nullptr};
@@ -146,6 +151,7 @@ namespace ros2_fault_injection_rviz
     rclcpp::Client<ros2_fault_injection::srv::GetFaultSchema>::SharedPtr get_schema_client_;
     rclcpp::Client<ros2_fault_injection::srv::GetFaultConfig>::SharedPtr get_config_client_;
     rclcpp::Client<ros2_fault_injection::srv::GetScenario>::SharedPtr get_scenario_client_;
+    rclcpp::Client<ros2_fault_injection::srv::RequestReport>::SharedPtr request_report_client_;
     QComboBox *config_key_dropdown_{nullptr};
     SelectedFault selected_fault_;
     std::vector<FaultConfigFieldView> selected_fault_schema_;
@@ -163,6 +169,8 @@ namespace ros2_fault_injection_rviz
     QTableWidget *scenario_status_table_{nullptr};
 
     QPushButton *view_scenario_button_{nullptr};
+
+    QPushButton *request_report_button_{nullptr};
   };
 
 } // namespace ros2_fault_injection_rviz

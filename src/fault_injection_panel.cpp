@@ -225,6 +225,10 @@ namespace ros2_fault_injection_rviz
     assertions_layout->addWidget(assertions_table_);
 
     auto *scenario_status_layout = new QVBoxLayout(scenario_status_tab_);
+
+    request_report_button_ = new QPushButton("Request Report", scenario_status_tab_);
+    scenario_status_layout->addWidget(request_report_button_);
+
     scenario_status_table_ = new QTableWidget(scenario_status_tab_);
     scenario_status_table_->setColumnCount(4);
     scenario_status_table_->setHorizontalHeaderLabels(
@@ -245,6 +249,8 @@ namespace ros2_fault_injection_rviz
             &FaultInjectionPanel::on_config_table_selection_changed);
     connect(view_scenario_button_, &QPushButton::clicked, this,
             &FaultInjectionPanel::on_view_scenario_clicked);
+    connect(request_report_button_, &QPushButton::clicked, this,
+            &FaultInjectionPanel::on_request_report_clicked);
   }
 
   void FaultInjectionPanel::setup_ros()
@@ -298,6 +304,10 @@ namespace ros2_fault_injection_rviz
     get_scenario_client_ =
         node_->create_client<ros2_fault_injection::srv::GetScenario>(
             "/fault_injection/get_scenario");
+
+    request_report_client_ =
+        node_->create_client<ros2_fault_injection::srv::RequestReport>(
+            "/fault_injection/request_report");
 
     spin_timer_ = new QTimer(this);
     connect(spin_timer_, &QTimer::timeout, this, [this]()
@@ -1018,6 +1028,63 @@ namespace ros2_fault_injection_rviz
     dialog->exec();
   }
 
+  void FaultInjectionPanel::on_request_report_clicked()
+  {
+    if (!request_report_client_ || !request_report_client_->service_is_ready())
+    {
+      set_status_message("Waiting for /fault_injection/request_report");
+      return;
+    }
+
+    auto request = std::make_shared<ros2_fault_injection::srv::RequestReport::Request>();
+    request_report_client_->async_send_request(
+        request,
+        [this](rclcpp::Client<ros2_fault_injection::srv::RequestReport>::SharedFuture future)
+        {
+          handle_request_report_response(future);
+        });
+  }
+
+  void FaultInjectionPanel::handle_request_report_response(
+      rclcpp::Client<ros2_fault_injection::srv::RequestReport>::SharedFuture future)
+  {
+    const auto response = future.get();
+
+    if (!response->success)
+    {
+      set_status_message("Failed to get report: " + QString::fromStdString(response->message));
+      return;
+    }
+
+    const auto title = QString("Fault Injection Report");
+
+    show_report_popup(title, QString::fromStdString(response->report_markdown));
+  }
+
+  void FaultInjectionPanel::show_report_popup(
+      const QString &title,
+      const QString &markdown_content)
+  {
+    auto *dialog = new QDialog(this);
+    dialog->setWindowTitle(title);
+    dialog->resize(900, 700);
+
+    auto *layout = new QVBoxLayout(dialog);
+
+    auto *text = new QTextEdit(dialog);
+    text->setReadOnly(true);
+    text->setMarkdown(markdown_content);
+
+    auto *close_button = new QPushButton("Close", dialog);
+
+    layout->addWidget(text);
+    layout->addWidget(close_button);
+
+    connect(close_button, &QPushButton::clicked, dialog, &QDialog::accept);
+
+    dialog->exec();
+  }
+
   FaultInjectionPanel::~FaultInjectionPanel()
   {
     if (spin_timer_ != nullptr)
@@ -1035,6 +1102,7 @@ namespace ros2_fault_injection_rviz
       node_.reset();
     }
   }
+
 } // namespace ros2_fault_injection_rviz
 
 PLUGINLIB_EXPORT_CLASS(ros2_fault_injection_rviz::FaultInjectionPanel, rviz_common::Panel)
