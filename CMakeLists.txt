@@ -67,4 +67,17 @@ ament_export_dependencies(
   rviz_common
 )
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(test_status_timeout
+    test/test_status_timeout.cpp
+  )
+
+  target_link_libraries(test_status_timeout
+    ${PROJECT_NAME}
+    Qt5::Widgets
+  )
+endif()
+
 ament_package()

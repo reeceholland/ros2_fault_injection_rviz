@@ -311,7 +311,8 @@ namespace ros2_fault_injection_rviz
 
     spin_timer_ = new QTimer(this);
     connect(spin_timer_, &QTimer::timeout, this, [this]()
-            { executor_.spin_some(); });
+            { executor_.spin_some();
+              check_status_timeout(std::chrono::steady_clock::now()); });
     spin_timer_->start(50);
 
     status_timer_ = new QTimer(this);
@@ -323,7 +324,7 @@ namespace ros2_fault_injection_rviz
 
   void FaultInjectionPanel::refresh()
   {
-    if (!status_client_ || status_request_in_flight_)
+    if (!status_client_ || pending_status_request_.has_value())
     {
       return;
     }
@@ -336,20 +337,36 @@ namespace ros2_fault_injection_rviz
     }
 
     auto request = std::make_shared<ros2_fault_injection::srv::GetFaultStatus::Request>();
-    status_request_in_flight_ = true;
 
-    status_client_->async_send_request(
+    auto pending = status_client_->async_send_request(
         request,
         [this](rclcpp::Client<ros2_fault_injection::srv::GetFaultStatus>::SharedFuture future)
         {
           handle_status_response(future);
         });
+
+    pending_status_request_ = PendingRequest{
+        pending.request_id,
+        std::chrono::steady_clock::now() + std::chrono::seconds(3)};
+  }
+
+  void FaultInjectionPanel::check_status_timeout(std::chrono::steady_clock::time_point now)
+  {
+    if (!pending_status_request_ || now < pending_status_request_->deadline)
+    {
+      return;
+    }
+
+    status_client_->remove_pending_request(pending_status_request_->request_id);
+    pending_status_request_.reset();
+
+    set_status_message("Injector unavailable: status request timed out, Retrying...");
   }
 
   void FaultInjectionPanel::handle_status_response(
       rclcpp::Client<ros2_fault_injection::srv::GetFaultStatus>::SharedFuture future)
   {
-    status_request_in_flight_ = false;
+    pending_status_request_.reset();
     populate_table(*future.get());
   }
 

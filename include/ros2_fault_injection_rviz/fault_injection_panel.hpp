@@ -5,6 +5,9 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <optional>
+#include <chrono>
+#include <cstdint>
 
 #include <QLabel>
 #include <QPushButton>
@@ -73,9 +76,16 @@ namespace ros2_fault_injection_rviz
     double max_value{0.0};
   };
 
+  struct PendingRequest
+  {
+    int64_t request_id;
+    std::chrono::steady_clock::time_point deadline;
+  };
+
   class FaultInjectionPanel : public rviz_common::Panel
   {
     Q_OBJECT
+    friend class FaultInjectionPanelTest;
 
   public:
     explicit FaultInjectionPanel(QWidget *parent = nullptr);
@@ -124,6 +134,7 @@ namespace ros2_fault_injection_rviz
     void handle_request_report_response(
         rclcpp::Client<ros2_fault_injection::srv::RequestReport>::SharedFuture future);
     void show_report_popup(const QString &title, const QString &content);
+    void check_status_timeout(std::chrono::steady_clock::time_point now);
     QPushButton *reload_button_{nullptr};
     QLabel *status_label_{nullptr};
     QTableWidget *table_{nullptr};
@@ -142,7 +153,6 @@ namespace ros2_fault_injection_rviz
 
     QTimer *spin_timer_{nullptr};
     QTimer *status_timer_{nullptr};
-    bool status_request_in_flight_{false};
     rclcpp::executors::SingleThreadedExecutor executor_;
     QLabel *config_set_label_{nullptr};
     QLineEdit *config_value_edit_{nullptr};
@@ -171,6 +181,8 @@ namespace ros2_fault_injection_rviz
     QPushButton *view_scenario_button_{nullptr};
 
     QPushButton *request_report_button_{nullptr};
+
+    std::optional<PendingRequest> pending_status_request_;
   };
 
 } // namespace ros2_fault_injection_rviz
